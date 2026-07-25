@@ -1,0 +1,23 @@
+[
+  {
+    "accession": "0000002488-24-000300",
+    "filename": "cover.htm",
+    "description": "8-K",
+    "document_type": "8-K",
+    "is_html": true
+  },
+  {
+    "accession": "0000002488-24-000300",
+    "filename": "ex99-1.htm",
+    "description": "Exhibit 99.1 Investor Deck",
+    "document_type": "EX-99.1",
+    "is_html": true
+  },
+  {
+    "accession": "0000002488-24-000300",
+    "filename": "ex99-2.htm",
+    "description": "Exhibit 99.2 Earnings Release",
+    "document_type": "EX-99.2",
+    "is_html": true
+  }
+]
