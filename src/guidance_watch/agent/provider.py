@@ -98,22 +98,16 @@ def resolve_provider(
     """
     settings = settings or get_settings()
     key = (settings.openrouter_api_key or "").strip()
-    if key:
-        # Live OpenRouter client is wired in Slice 4. Until then, fail clearly
-        # if someone asks for live mode with a key present but no client yet.
-        if require_live:
-            raise NotImplementedError(
-                "OpenRouter live client lands in Slice 4; key is configured but "
-                "the network client is not implemented yet."
-            )
-        # Prefer scripted/deterministic during early slices even if a key exists,
-        # unless require_live was requested (handled above).
-        return ScriptedProvider(script, model_id="scripted-provider")
     if require_live:
-        raise MissingLlmCredentialsError(
-            "OPENROUTER_API_KEY is not set. OpenRouter free models still require "
-            "an API key. Use the deterministic/scripted path, or set a key later."
-        )
+        if not key:
+            raise MissingLlmCredentialsError(
+                "OPENROUTER_API_KEY is not set. OpenRouter free models still require "
+                "an API key. Use the deterministic/scripted path, or set a key later."
+            )
+        from guidance_watch.agent.openrouter import OpenRouterProvider
+
+        return OpenRouterProvider(settings)
+    # Default: scripted/deterministic path (D19) even if a key happens to be present.
     return ScriptedProvider(script, model_id="scripted-provider")
 
 
