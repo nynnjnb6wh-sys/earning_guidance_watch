@@ -2,7 +2,9 @@
 
 **Status:** draft — actionable, but several decisions in [§4 Open questions](#4-open-questions) should be confirmed before Slice 3 (agent extraction) and Slice 4 (historical metrics). Every open question has a proposed default so an agent can proceed unblocked if no answer arrives.
 
-**Document version:** 0.1
+**Document version:** 0.3
+**Settled since 0.1:** revision end-to-end eval demoted (D17) — no synthetic revision fixtures.
+**Settled since 0.2:** LLM provider is OpenRouter (D18); API key pending from owner (see [§7 Owner TODOs](#7-owner-todos)).
 **Scoring version:** `score-v1`
 **Prompt version:** `extract-v1`
 **Agent version:** `agent-v1`
@@ -92,7 +94,7 @@ Support only:
 - Eight previous completed fiscal quarters when available
 - USD values normalized to millions
 - Outlook/guidance-section sentiment
-- Explicitly identifiable revisions
+- Explicitly identifiable revisions when they appear in real filings (best-effort linking only; see D17)
 - Local execution and persistence
 
 Do not implement:
@@ -108,6 +110,7 @@ Do not implement:
 - Multiple cooperating agents
 - Kafka, distributed queues or production cloud infrastructure
 - Fully automatic linking of ambiguous revisions
+- Synthetic revision fixtures or an end-to-end eval path for revisions (D17)
 
 Ambiguous records should be marked for review rather than guessed.
 
@@ -425,15 +428,15 @@ Cover at least these cases:
 4. Quarterly and full-year guidance in the same release.
 5. Fiscal quarter differing from the calendar quarter.
 6. Units expressed as billions and millions.
-7. Explicit downward revision.
-8. Ambiguous revision that must become `needs_review`.
-9. Actual revenue just inside or outside a range.
-10. A post-cutoff document that must be rejected.
-11. Duplicate accession processing.
-12. Temporary HTTP failure followed by a successful retry.
-13. Missing sentiment baseline.
-14. Too little history for a reliability label.
-15. A supporting quote that does not appear in the source.
+7. Actual revenue just inside or outside a range.
+8. A post-cutoff document that must be rejected.
+9. Duplicate accession processing.
+10. Temporary HTTP failure followed by a successful retry.
+11. Missing sentiment baseline.
+12. Too little history for a reliability label.
+13. A supporting quote that does not appear in the source.
+
+**Revision coverage (demoted — D17):** do not invent synthetic revision Exhibit 99 fixtures, and do not require an end-to-end agent path for explicit or ambiguous revisions. Keep the data model fields (`is_revision`, `revision_direction`, revision counts) and the deterministic linker. Unit-test the linker only: when a second claim shares a `target_fiscal_period`, never overwrite original guidance; when linking is not explicitly identifiable, emit `needs_review`. Treat revision linking as best-effort in the MVP; real mid-quarter 8-K revisions for the watchlist issuers are rare and out of scope for fixture construction.
 
 Measure:
 
@@ -441,7 +444,7 @@ Measure:
 - Correct attachment selection
 - Guidance extraction accuracy by field
 - Correct unit normalization
-- Revision-linking accuracy
+- Revision-linker unit correctness (no overwrite of original; ambiguous → `needs_review`) — not end-to-end revision extraction accuracy
 - Temporal-safety violations
 - Supporting-quote validation
 - Required-tool use
@@ -585,9 +588,10 @@ Deliverables:
 
 - `guidance-watch backfill --ticker AMD --quarters 8` reusing the same retrieval and extraction pipeline.
 - Actuals ingestion per the decision in [Q4](#q4-source-of-actual-revenue-blocking).
-- Guidance-to-actual and revision linking with explicit `needs_review` on ambiguity; no guessing.
+- Guidance-to-actual linking with explicit `needs_review` on ambiguity; no guessing.
+- Revision linker as a best-effort unit (D17): no synthetic revision fixtures; ambiguous second claims for the same period become `needs_review`; original guidance is never overwritten.
 
-**Done when:** fixture backfill produces outcomes for unambiguous quarters, `needs_review` for the ambiguous-revision case, and never overwrites original guidance with a revision.
+**Done when:** fixture backfill produces outcomes for unambiguous quarters; unit tests assert that a second claim for the same period does not overwrite original guidance and that non-explicit links become `needs_review`; no end-to-end revision Exhibit 99 fixtures are required.
 
 ### Slice 7 — Telemetry
 
@@ -603,7 +607,7 @@ Deliverables:
 
 Deliverables:
 
-- Fixture dataset covering all 15 cases with expected outputs and a separate later-information ground-truth file used only by the harness.
+- Fixture dataset covering the 13 end-to-end cases above (plus unit-only revision-linker tests per D17) with expected outputs and a separate later-information ground-truth file used only by the harness.
 - `guidance-watch eval` producing the metric table in §1 and persisting `evaluation_results` rows with failure categories.
 - README: setup, configuration, all CLI commands, optional Phoenix instructions, limitations, disclaimer.
 
@@ -633,6 +637,8 @@ Defaults an implementing agent should assume unless an open question is answered
 | D14 | FinBERT long text | Split into 512-token windows, average probabilities weighted by token count, record window count |
 | D15 | Scheduling | `--interval` is an in-process sleep loop; no cron, systemd or external scheduler |
 | D16 | Secrets | LLM key via env var only; never logged, never in spans, `.env.example` documents names without values |
+| D17 | Revision eval coverage | **Settled:** demote. No synthetic revision fixtures. No end-to-end agent path required for explicit/ambiguous revisions. Keep schema + deterministic linker; unit-test no-overwrite and `needs_review` on ambiguous links only. Document as best-effort / often `needs_review` in README limitations. |
+| D18 | LLM provider | **Settled:** OpenRouter. OpenAI-compatible client with `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` defaulting to `https://openrouter.ai/api/v1`, and `OPENROUTER_MODEL` (model id TBD). Provider stays behind the small interface; deterministic suite uses `ScriptedProvider` and never requires the key. |
 
 ---
 
@@ -642,15 +648,19 @@ Defaults an implementing agent should assume unless an open question is answered
 
 #### Q1: Where does this repository live?
 
-This plan was authored in a session with no repository checked out and no SCM credentials, so nothing can be pushed from here. Confirm the target: a new empty GitHub repo named `earning_guidance_watch`, or an existing repo and path. Implementation should be started from an agent launched with that repo attached.
-
-*Proposed default:* new standalone repo `earning_guidance_watch`, MIT licensed, this file at the root.
+**Settled:** https://github.com/nynnjnb6wh-sys/earning_guidance_watch (public). Implementation agents should be launched with this repo attached. Transfer or recreate under a different owner if needed.
 
 #### Q2: LLM provider and model
 
-Which provider, which model identifier, and will an API key be available as a Cloud Agent secret? Also confirm whether a per-run cost ceiling should be enforced.
+**Settled (provider):** OpenRouter (D18). Key will be supplied later by the owner — see [§7 Owner TODOs](#7-owner-todos).
 
-*Proposed default:* provider-agnostic interface; one concrete OpenAI-compatible implementation reading `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL`; no live LLM test in the default suite.
+Still open:
+
+- Which OpenRouter model id (`OPENROUTER_MODEL`)?
+- Should a per-run cost ceiling be enforced?
+- Will the key be provided as a Cloud Agent secret, local `.env`, or both?
+
+*Working assumption until answered:* OpenAI-compatible client against OpenRouter; model id chosen at config time; no live LLM test in the default suite.
 
 #### Q3: Is a real network verification expected?
 
@@ -751,3 +761,15 @@ At completion, report:
 - **Verification commands and results** — exact commands and outcomes, including eval metric table.
 - **Remaining limitations** — especially anything in the "Do not implement" list that a reader might expect to work, plus every `needs_review` category the system can emit.
 - **The next smallest useful improvement** — one change, scoped.
+
+---
+
+## 7. Owner TODOs
+
+Items the human owner must supply; implementation agents must not invent these.
+
+| ID | Status | Action |
+|---|---|---|
+| O1 | **pending** | Provide OpenRouter API key as `OPENROUTER_API_KEY` (Cloud Agent secret and/or local `.env`). Needed only for live LLM runs; the deterministic suite must pass without it. |
+| O2 | pending | Choose OpenRouter model id for `OPENROUTER_MODEL` (e.g. a tool-calling capable model). |
+| O3 | pending | Decide whether a per-run OpenRouter cost ceiling is required. |
