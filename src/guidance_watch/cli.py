@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Annotated
+
 import typer
 
 from guidance_watch import __version__
+from guidance_watch.config import get_settings
+from guidance_watch.pipeline.analyze import analyze_accession
 
 app = typer.Typer(
     name="guidance-watch",
@@ -12,6 +17,8 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+_DEFAULT_FIXTURES = Path("tests/fixtures")
 
 
 @app.callback()
@@ -38,11 +45,33 @@ def watch(
 
 @app.command("analyze")
 def analyze(
-    accession: str = typer.Option(..., "--accession", help="SEC accession number."),
+    accession: Annotated[str, typer.Option("--accession", help="SEC accession number.")],
+    fixtures: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures",
+            help="Root directory containing offline filing fixtures.",
+            exists=False,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = _DEFAULT_FIXTURES,
 ) -> None:
-    """Analyze a single filing by accession number."""
-    _ = accession
-    typer.echo("analyze: not implemented yet (Slice 2).", err=True)
+    """Analyze a single filing by accession number (fixture client for offline use)."""
+    settings = get_settings()
+    result = analyze_accession(accession, fixtures_root=fixtures, settings=settings)
+    if result.status == "already_processed":
+        typer.echo(f"already processed: {accession} (run_id={result.run_id})")
+        raise typer.Exit(code=0)
+    if result.status == "ignored":
+        typer.echo(f"ignored: {accession} ({result.detail or 'see analysis_runs'})")
+        raise typer.Exit(code=0)
+    if result.status == "completed":
+        label = result.assessment.label.value if result.assessment else "n/a"
+        typer.echo(f"completed: {accession} label={label} run_id={result.run_id}")
+        raise typer.Exit(code=0)
+    typer.echo(f"failed: {accession} status={result.status} detail={result.detail}", err=True)
     raise typer.Exit(code=1)
 
 
