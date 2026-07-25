@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+import warnings
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 _WS_RE = re.compile(r"\s+")
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def normalize_whitespace(text: str) -> str:
