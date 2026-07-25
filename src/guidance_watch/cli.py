@@ -20,6 +20,7 @@ app = typer.Typer(
 )
 
 _DEFAULT_FIXTURES = Path("tests/fixtures")
+_DEFAULT_ACTUALS = Path("seed/actuals.csv")
 
 
 @app.callback()
@@ -101,13 +102,36 @@ def analyze(
 
 @app.command("backfill")
 def backfill(
-    ticker: str = typer.Option(..., "--ticker", help="Ticker symbol."),
-    quarters: int = typer.Option(8, "--quarters", help="Number of fiscal quarters."),
+    ticker: Annotated[str, typer.Option("--ticker", help="Ticker symbol.")],
+    quarters: Annotated[int, typer.Option("--quarters", help="Number of fiscal quarters.")] = 8,
+    fixtures: Annotated[
+        Path,
+        typer.Option("--fixtures", help="Fixture or edgar_raw root for historical filings."),
+    ] = _DEFAULT_FIXTURES,
+    actuals: Annotated[
+        Path,
+        typer.Option("--actuals", help="Curated actuals CSV (publication dates required)."),
+    ] = _DEFAULT_ACTUALS,
 ) -> None:
-    """Backfill historical guidance for a ticker."""
-    _ = (ticker, quarters)
-    typer.echo("backfill: not implemented yet (Slice 6).", err=True)
-    raise typer.Exit(code=1)
+    """Backfill historical guidance for a ticker and link curated actuals."""
+    from guidance_watch.pipeline.backfill import run_backfill
+
+    settings = get_settings()
+    result = run_backfill(
+        ticker=ticker,
+        quarters=quarters,
+        fixtures_root=fixtures,
+        actuals_csv=actuals,
+        settings=settings,
+    )
+    typer.echo(
+        f"backfill {result.ticker}: accessions={result.accessions_seen} "
+        f"claims={result.claims_extracted} outcomes={result.outcomes_linked} "
+        f"needs_review={len(result.needs_review)}"
+    )
+    for item in result.needs_review:
+        typer.echo(f"  needs_review: {item}")
+    raise typer.Exit(code=0)
 
 
 @app.command("eval")

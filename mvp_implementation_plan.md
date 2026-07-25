@@ -671,13 +671,7 @@ The deterministic suite runs offline by design. Do you also want `live`-marked t
 
 #### Q4: Source of actual revenue (blocking)
 
-The historical-outcome model needs `actual_revenue_usd_m` and `actual_publication_date`, and the temporal guard depends on that publication date being trustworthy. Three options:
-
-- **A — XBRL company-facts API.** `data.sec.gov/api/xbrl/companyconcept/...` gives values with `filed` dates, which is ideal for temporal safety, but requires choosing among `Revenues`, `RevenueFromContractWithCustomerExcludingAssessedTax` and similar tags, and reconciling fiscal-period labels.
-- **B — Re-extract from the next quarter's 8-K earnings release** using the same pipeline. Consistent with the rest of the system and keeps everything inside Form 8-K, but adds another extraction surface and more `needs_review` cases.
-- **C — Curated CSV** of actuals for the three tickers, manually verified, with explicit publication dates.
-
-*Proposed default:* **A as primary, C as an override/seed file**, with any mismatch or missing tag producing `needs_review` rather than a guess. B is out of scope for the MVP.
+**Settled for MVP:** curated CSV seed at `seed/actuals.csv` (option C) with explicit `actual_publication_date` values. XBRL company-facts (A) remains a later enhancement; option B stays out of scope. Missing/ambiguous links → `needs_review`.
 
 #### Q5: Fiscal calendars
 
