@@ -8,7 +8,7 @@ See [`mvp_implementation_plan.md`](mvp_implementation_plan.md) for scope, formul
 
 ## Status
 
-Slice 0 (skeleton) in progress. Offline deterministic suite is the acceptance path; OpenRouter credentials are owner-supplied later (plan §7).
+Slices 0–1 complete (skeleton + typed models/scoring). Offline deterministic suite is the acceptance path; OpenRouter credentials are owner-supplied later (plan §7).
 
 ## Setup
 
