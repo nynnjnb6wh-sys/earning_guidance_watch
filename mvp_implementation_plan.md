@@ -761,3 +761,15 @@ At completion, report:
 - **Verification commands and results** — exact commands and outcomes, including eval metric table.
 - **Remaining limitations** — especially anything in the "Do not implement" list that a reader might expect to work, plus every `needs_review` category the system can emit.
 - **The next smallest useful improvement** — one change, scoped.
+
+---
+
+## 7. Owner TODOs
+
+Items the human owner must supply; implementation agents must not invent these.
+
+| ID | Status | Action |
+|---|---|---|
+| O1 | **pending** | Provide OpenRouter API key as `OPENROUTER_API_KEY` (Cloud Agent secret and/or local `.env`). Needed only for live LLM runs; the deterministic suite must pass without it. |
+| O2 | pending | Choose OpenRouter model id for `OPENROUTER_MODEL` (e.g. a tool-calling capable model). |
+| O3 | pending | Decide whether a per-run OpenRouter cost ceiling is required. |
