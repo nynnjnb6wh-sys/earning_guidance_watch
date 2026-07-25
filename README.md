@@ -44,7 +44,7 @@ Live checks (network + credentials) are optional and marked `@pytest.mark.live`.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Set a descriptive `SEC_USER_AGENT`. Provide `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` only when running live LLM analysis.
+Copy `.env.example` to `.env`. Set a descriptive `SEC_USER_AGENT`. Provide `OPENROUTER_API_KEY` only when running live LLM analysis. Default model is `openai/gpt-4.1-nano` (`OPENROUTER_MODEL`).
 
 ## License
 
