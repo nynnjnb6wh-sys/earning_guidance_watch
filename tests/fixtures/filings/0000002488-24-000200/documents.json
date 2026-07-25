@@ -1,0 +1,16 @@
+[
+  {
+    "accession": "0000002488-24-000200",
+    "filename": "amd-irr.htm",
+    "description": "8-K",
+    "document_type": "8-K",
+    "is_html": true
+  },
+  {
+    "accession": "0000002488-24-000200",
+    "filename": "ex99-1.htm",
+    "description": "Exhibit 99.1",
+    "document_type": "EX-99.1",
+    "is_html": true
+  }
+]

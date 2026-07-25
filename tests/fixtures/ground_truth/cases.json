@@ -1,0 +1,41 @@
+{
+  "description": "Later-information ground truth for the offline eval harness only. Never fed to the agent as input.",
+  "cases": {
+    "case01_relevant_ex99": {
+      "relevant": true,
+      "target_fiscal_period": "FY2024Q1",
+      "lower_bound_usd_m": 5400.0,
+      "upper_bound_usd_m": 6000.0,
+      "source_document": "ex99-1.htm"
+    },
+    "case02_irrelevant": {
+      "relevant": false
+    },
+    "case03_multi_exhibit": {
+      "relevant": true,
+      "target_fiscal_period": "FY2024Q2",
+      "lower_bound_usd_m": 1000.0,
+      "upper_bound_usd_m": 1200.0,
+      "source_document": "ex99-2.htm"
+    },
+    "case04_quarter_and_full_year": {
+      "relevant": true,
+      "target_fiscal_period": "FY2024Q3",
+      "lower_bound_usd_m": 2000.0,
+      "upper_bound_usd_m": 2200.0
+    },
+    "case05_fiscal_vs_calendar": {
+      "relevant": true,
+      "target_fiscal_period": "FY2025Q1",
+      "calendar_quarter_of_filing": "2024Q4",
+      "lower_bound_usd_m": 3000.0,
+      "upper_bound_usd_m": 3200.0
+    },
+    "case07_actual_bounds": {
+      "inside_actual_usd_m": 105.0,
+      "outside_actual_usd_m": 99.0,
+      "lower_bound_usd_m": 100.0,
+      "upper_bound_usd_m": 120.0
+    }
+  }
+}

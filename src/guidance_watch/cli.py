@@ -135,10 +135,24 @@ def backfill(
 
 
 @app.command("eval")
-def eval_cmd() -> None:
-    """Run the fixture-based evaluation suite."""
-    typer.echo("eval: not implemented yet (Slice 8).", err=True)
-    raise typer.Exit(code=1)
+def eval_cmd(
+    fixtures: Annotated[
+        Path,
+        typer.Option("--fixtures", help="Fixture root for evaluation cases."),
+    ] = _DEFAULT_FIXTURES,
+) -> None:
+    """Run the fixture-based evaluation suite (offline)."""
+    from guidance_watch.eval.harness import run_eval
+
+    settings = get_settings()
+    report = run_eval(fixtures_root=fixtures, settings=settings)
+    typer.echo("Evaluation totals:")
+    for name, value in sorted(report.totals.items()):
+        typer.echo(f"  {name}: {value:.3f}")
+    for result in report.results:
+        mark = "PASS" if result.passed else "FAIL"
+        typer.echo(f"[{mark}] {result.case_id}: {result.detail}")
+    raise typer.Exit(code=0 if report.passed else 1)
 
 
 if __name__ == "__main__":

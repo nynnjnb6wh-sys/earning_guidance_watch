@@ -23,6 +23,8 @@ from guidance_watch.persistence.db import init_db
 from guidance_watch.reporting.render import render_json_report, render_markdown_report
 from guidance_watch.sec.fixture_client import FixtureSecClient
 from guidance_watch.sec.html_text import quote_appears_in_source
+from guidance_watch.telemetry import filing_trace, setup_tracing, span
+from guidance_watch.telemetry.setup import set_attrs
 
 # Deterministic extractors for common quarterly GAAP revenue guidance phrasings.
 # Explicit A-to-B ranges:
@@ -167,27 +169,32 @@ def extract_guidance_from_text(
     )
 
 
-def select_exhibit99(documents: list[FilingDocument]) -> str | None:
-    def score(filename: str) -> tuple[int, str]:
-        lower = filename.lower()
-        # Lower score = better preference.
-        if "ex99" in lower or re.search(r"ex[-_]?99", lower) or "991" in lower:
-            return (0, lower)
-        if "pr.htm" in lower or "press" in lower or "earningsrelease" in lower:
-            return (1, lower)
-        if "cfocommentary" in lower or "earnings" in lower:
-            return (2, lower)
-        return (5, lower)
+def _exhibit_score(filename: str) -> tuple[int, str]:
+    lower = filename.lower()
+    # Lower score = better preference.
+    if "ex99" in lower or re.search(r"ex[-_]?99", lower) or "991" in lower:
+        return (0, lower)
+    if "pr.htm" in lower or "press" in lower or "earningsrelease" in lower:
+        return (1, lower)
+    if "cfocommentary" in lower or "earnings" in lower:
+        return (2, lower)
+    return (5, lower)
 
+
+def rank_exhibit_candidates(documents: list[FilingDocument]) -> list[str]:
+    """Return HTML attachment filenames ordered by Exhibit 99 preference."""
     html_docs = [d for d in documents if d.is_html]
     if not html_docs:
-        return None
-    html_docs.sort(key=lambda d: score(d.filename))
-    best = html_docs[0]
-    # If best is only a cover 8-K and a better exhibit exists, prefer exhibit-ish names.
-    if score(best.filename)[0] >= 5:
-        return best.filename
-    return best.filename
+        return []
+    preferred = [d for d in html_docs if _exhibit_score(d.filename)[0] < 5]
+    pool = preferred or html_docs
+    pool = sorted(pool, key=lambda d: _exhibit_score(d.filename))
+    return [d.filename for d in pool]
+
+
+def select_exhibit99(documents: list[FilingDocument]) -> str | None:
+    ranked = rank_exhibit_candidates(documents)
+    return ranked[0] if ranked else None
 
 
 def analyze_accession(
@@ -197,6 +204,7 @@ def analyze_accession(
     settings: Settings | None = None,
 ) -> AnalyzeResult:
     settings = settings or get_settings()
+    setup_tracing()
     conn = init_db(settings.db_path)
     try:
         existing = repo.get_analysis_run(conn, accession)
@@ -216,120 +224,149 @@ def analyze_accession(
             )
 
         client = FixtureSecClient(fixtures_root)
-        meta = client.get_filing_metadata(accession)
-        repo.upsert_filing(conn, meta)
-        repo.insert_job_attempt(conn, accession=accession, status="running")
+        with filing_trace(accession=accession) as root_span:
+            with span("retrieve metadata", accession=accession):
+                meta = client.get_filing_metadata(accession)
+            set_attrs(
+                root_span,
+                {
+                    "filing.ticker": meta.ticker,
+                    "filing.cik": meta.cik,
+                    "filing.cutoff": meta.accepted_at.isoformat(),
+                },
+            )
+            with span("detect", form=meta.form):
+                repo.upsert_filing(conn, meta)
+                repo.insert_job_attempt(conn, accession=accession, status="running")
+            with span("filter", items=",".join(meta.items)):
+                documents = client.list_filing_documents(accession)
+                candidates = rank_exhibit_candidates(documents)
+            if not candidates:
+                with span("persist result", status="ignored"):
+                    run_id = repo.insert_analysis_run(
+                        conn,
+                        accession=accession,
+                        ticker=meta.ticker,
+                        cik=meta.cik,
+                        status="ignored",
+                        prompt_version=PROMPT_VERSION,
+                        agent_version=AGENT_VERSION,
+                        scoring_version=SCORING_VERSION,
+                        model_identifier="deterministic-extractor-v1",
+                        assessment=None,
+                        ignore_reason="no_html_exhibit",
+                    )
+                    conn.commit()
+                return AnalyzeResult(status="ignored", accession=accession, run_id=run_id)
 
-        documents = client.list_filing_documents(accession)
-        filename = select_exhibit99(documents)
-        if filename is None:
-            run_id = repo.insert_analysis_run(
-                conn,
+            claim = None
+            filename = candidates[0]
+            for filename in candidates:
+                with span("retrieve document", filename=filename):
+                    content = client.fetch_filing_document(accession, filename)
+                with span("classify", filename=filename):
+                    claim = extract_guidance_from_text(
+                        text=content.text,
+                        meta_accession=meta.accession,
+                        meta_cik=meta.cik,
+                        meta_ticker=meta.ticker or "UNKNOWN",
+                        meta_filing_date=meta.filing_date,
+                        meta_accepted_at=meta.accepted_at,
+                        source_document=filename,
+                    )
+                if claim is not None:
+                    break
+            if claim is None:
+                with span("persist result", status="ignored"):
+                    run_id = repo.insert_analysis_run(
+                        conn,
+                        accession=accession,
+                        ticker=meta.ticker,
+                        cik=meta.cik,
+                        status="ignored",
+                        prompt_version=PROMPT_VERSION,
+                        agent_version=AGENT_VERSION,
+                        scoring_version=SCORING_VERSION,
+                        model_identifier="deterministic-extractor-v1",
+                        assessment=None,
+                        ignore_reason="no_quarterly_gaap_revenue_guidance",
+                    )
+                    conn.commit()
+                return AnalyzeResult(status="ignored", accession=accession, run_id=run_id)
+
+            with span("extract guidance", period=claim.target_fiscal_period.label):
+                pass  # claim already extracted; span records presence
+
+            with span("load history", usable_quarters=0):
+                pass
+            with span("sentiment inference", model_name="fake-sentiment"):
+                sentiment = SentimentResult.from_probabilities(
+                    model_name="fake-sentiment",
+                    model_revision="slice2",
+                    positive_probability=0.4,
+                    neutral_probability=0.4,
+                    negative_probability=0.2,
+                    analyzed_text_hash="slice2-placeholder",
+                )
+            with span("calculate assessment"):
+                assessment = calculate_assessment(
+                    AssessmentInput(
+                        current_claim=claim,
+                        history=[],
+                        current_sentiment=sentiment,
+                        historical_tone_scores=[],
+                    )
+                )
+
+            with span("render report"):
+                json_body = render_json_report(claim, assessment)
+                md_body = render_markdown_report(claim, assessment)
+                reports_dir = settings.reports_dir / (meta.ticker or "UNKNOWN") / accession
+                reports_dir.mkdir(parents=True, exist_ok=True)
+                json_path = reports_dir / "report.json"
+                md_path = reports_dir / "report.md"
+                json_path.write_text(json_body, encoding="utf-8")
+                md_path.write_text(md_body, encoding="utf-8")
+
+            with span("persist result", status="completed"):
+                claim_id = repo.insert_guidance_claim(conn, claim)
+                claim.claim_id = claim_id
+                run_id = repo.insert_analysis_run(
+                    conn,
+                    accession=accession,
+                    ticker=meta.ticker,
+                    cik=meta.cik,
+                    status="completed",
+                    prompt_version=PROMPT_VERSION,
+                    agent_version=AGENT_VERSION,
+                    scoring_version=SCORING_VERSION,
+                    model_identifier="deterministic-extractor-v1",
+                    assessment=assessment,
+                )
+                repo.insert_report(
+                    conn,
+                    run_id=run_id,
+                    accession=accession,
+                    fmt="json",
+                    body=json_body,
+                    path=str(json_path),
+                )
+                repo.insert_report(
+                    conn,
+                    run_id=run_id,
+                    accession=accession,
+                    fmt="markdown",
+                    body=md_body,
+                    path=str(md_path),
+                )
+                repo.insert_job_attempt(conn, accession=accession, status="completed")
+                conn.commit()
+            set_attrs(root_span, {"job.status": "completed"})
+            return AnalyzeResult(
+                status="completed",
                 accession=accession,
-                ticker=meta.ticker,
-                cik=meta.cik,
-                status="ignored",
-                prompt_version=PROMPT_VERSION,
-                agent_version=AGENT_VERSION,
-                scoring_version=SCORING_VERSION,
-                model_identifier="deterministic-extractor-v1",
-                assessment=None,
-                ignore_reason="no_html_exhibit",
+                run_id=run_id,
+                assessment=assessment,
             )
-            conn.commit()
-            return AnalyzeResult(status="ignored", accession=accession, run_id=run_id)
-
-        content = client.fetch_filing_document(accession, filename)
-        claim = extract_guidance_from_text(
-            text=content.text,
-            meta_accession=meta.accession,
-            meta_cik=meta.cik,
-            meta_ticker=meta.ticker or "UNKNOWN",
-            meta_filing_date=meta.filing_date,
-            meta_accepted_at=meta.accepted_at,
-            source_document=filename,
-        )
-        if claim is None:
-            run_id = repo.insert_analysis_run(
-                conn,
-                accession=accession,
-                ticker=meta.ticker,
-                cik=meta.cik,
-                status="ignored",
-                prompt_version=PROMPT_VERSION,
-                agent_version=AGENT_VERSION,
-                scoring_version=SCORING_VERSION,
-                model_identifier="deterministic-extractor-v1",
-                assessment=None,
-                ignore_reason="no_quarterly_gaap_revenue_guidance",
-            )
-            conn.commit()
-            return AnalyzeResult(status="ignored", accession=accession, run_id=run_id)
-
-        # Slice 2: empty history + fake sentiment so assessment path is exercised.
-        sentiment = SentimentResult.from_probabilities(
-            model_name="fake-sentiment",
-            model_revision="slice2",
-            positive_probability=0.4,
-            neutral_probability=0.4,
-            negative_probability=0.2,
-            analyzed_text_hash="slice2-placeholder",
-        )
-        assessment = calculate_assessment(
-            AssessmentInput(
-                current_claim=claim,
-                history=[],
-                current_sentiment=sentiment,
-                historical_tone_scores=[],
-            )
-        )
-
-        claim_id = repo.insert_guidance_claim(conn, claim)
-        claim.claim_id = claim_id
-        run_id = repo.insert_analysis_run(
-            conn,
-            accession=accession,
-            ticker=meta.ticker,
-            cik=meta.cik,
-            status="completed",
-            prompt_version=PROMPT_VERSION,
-            agent_version=AGENT_VERSION,
-            scoring_version=SCORING_VERSION,
-            model_identifier="deterministic-extractor-v1",
-            assessment=assessment,
-        )
-
-        json_body = render_json_report(claim, assessment)
-        md_body = render_markdown_report(claim, assessment)
-        reports_dir = settings.reports_dir / (meta.ticker or "UNKNOWN") / accession
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        json_path = reports_dir / "report.json"
-        md_path = reports_dir / "report.md"
-        json_path.write_text(json_body, encoding="utf-8")
-        md_path.write_text(md_body, encoding="utf-8")
-        repo.insert_report(
-            conn,
-            run_id=run_id,
-            accession=accession,
-            fmt="json",
-            body=json_body,
-            path=str(json_path),
-        )
-        repo.insert_report(
-            conn,
-            run_id=run_id,
-            accession=accession,
-            fmt="markdown",
-            body=md_body,
-            path=str(md_path),
-        )
-        repo.insert_job_attempt(conn, accession=accession, status="completed")
-        conn.commit()
-        return AnalyzeResult(
-            status="completed",
-            accession=accession,
-            run_id=run_id,
-            assessment=assessment,
-        )
     finally:
         conn.close()
