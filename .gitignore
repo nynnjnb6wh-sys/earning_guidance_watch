@@ -31,6 +31,7 @@ reports/
 .DS_Store
 *.swp
 
-# Model weights / downloads
+# Model weights / downloads (not the Python package src/guidance_watch/models/)
 .cache/huggingface/
-models/
+/models/
+weights/

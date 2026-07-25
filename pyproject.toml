@@ -73,10 +73,6 @@ warn_unused_configs = true
 mypy_path = "src"
 packages = ["guidance_watch"]
 
-[[tool.mypy.overrides]]
-module = ["bs4.*"]
-ignore_missing_imports = true
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
