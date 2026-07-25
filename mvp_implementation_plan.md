@@ -2,7 +2,7 @@
 
 **Status:** draft — actionable, but several decisions in [§4 Open questions](#4-open-questions) should be confirmed before Slice 3 (agent extraction) and Slice 4 (historical metrics). Every open question has a proposed default so an agent can proceed unblocked if no answer arrives.
 
-**Document version:** 0.3
+**Document version:** 0.4
 **Settled since 0.1:** revision end-to-end eval demoted (D17) — no synthetic revision fixtures.
 **Settled since 0.2:** LLM provider is OpenRouter (D18); API key pending from owner (see [§7 Owner TODOs](#7-owner-todos)).
 **Settled since 0.3:** default model `openai/gpt-4.1-nano` (O2 / D18).
