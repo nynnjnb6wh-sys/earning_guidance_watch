@@ -25,7 +25,10 @@ class Settings(BaseSettings):
         default="https://openrouter.ai/api/v1",
         alias="OPENROUTER_BASE_URL",
     )
-    openrouter_model: str | None = Field(default=None, alias="OPENROUTER_MODEL")
+    openrouter_model: str = Field(
+        default="openai/gpt-4.1-nano",
+        alias="OPENROUTER_MODEL",
+    )
 
     db_path: Path = Field(default=Path("./data/guidance_watch.db"), alias="GUIDANCE_WATCH_DB_PATH")
     cache_dir: Path = Field(default=Path("./data/cache"), alias="GUIDANCE_WATCH_CACHE_DIR")

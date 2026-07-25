@@ -5,6 +5,7 @@
 **Document version:** 0.3
 **Settled since 0.1:** revision end-to-end eval demoted (D17) — no synthetic revision fixtures.
 **Settled since 0.2:** LLM provider is OpenRouter (D18); API key pending from owner (see [§7 Owner TODOs](#7-owner-todos)).
+**Settled since 0.3:** default model `openai/gpt-4.1-nano` (O2 / D18).
 **Scoring version:** `score-v1`
 **Prompt version:** `extract-v1`
 **Agent version:** `agent-v1`
@@ -638,7 +639,7 @@ Defaults an implementing agent should assume unless an open question is answered
 | D15 | Scheduling | `--interval` is an in-process sleep loop; no cron, systemd or external scheduler |
 | D16 | Secrets | LLM key via env var only; never logged, never in spans, `.env.example` documents names without values |
 | D17 | Revision eval coverage | **Settled:** demote. No synthetic revision fixtures. No end-to-end agent path required for explicit/ambiguous revisions. Keep schema + deterministic linker; unit-test no-overwrite and `needs_review` on ambiguous links only. Document as best-effort / often `needs_review` in README limitations. |
-| D18 | LLM provider | **Settled:** OpenRouter. OpenAI-compatible client with `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` defaulting to `https://openrouter.ai/api/v1`, and `OPENROUTER_MODEL` (model id TBD). Provider stays behind the small interface; deterministic suite uses `ScriptedProvider` and never requires the key. |
+| D18 | LLM provider | **Settled:** OpenRouter. OpenAI-compatible client with `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` defaulting to `https://openrouter.ai/api/v1`, and `OPENROUTER_MODEL` defaulting to `openai/gpt-4.1-nano`. Provider stays behind the small interface; deterministic suite uses `ScriptedProvider` and never requires the key. |
 
 ---
 
@@ -652,15 +653,14 @@ Defaults an implementing agent should assume unless an open question is answered
 
 #### Q2: LLM provider and model
 
-**Settled (provider):** OpenRouter (D18). Key will be supplied later by the owner — see [§7 Owner TODOs](#7-owner-todos).
+**Settled (provider + model):** OpenRouter (D18) with default `OPENROUTER_MODEL=openai/gpt-4.1-nano` (O2). Key will be supplied later by the owner — see [§7 Owner TODOs](#7-owner-todos).
 
 Still open:
 
-- Which OpenRouter model id (`OPENROUTER_MODEL`)?
-- Should a per-run cost ceiling be enforced?
+- Should a per-run cost ceiling be enforced? (O3)
 - Will the key be provided as a Cloud Agent secret, local `.env`, or both?
 
-*Working assumption until answered:* OpenAI-compatible client against OpenRouter; model id chosen at config time; no live LLM test in the default suite.
+*Working assumption until answered:* OpenAI-compatible client against OpenRouter; no live LLM test in the default suite.
 
 #### Q3: Is a real network verification expected?
 
@@ -771,5 +771,5 @@ Items the human owner must supply; implementation agents must not invent these.
 | ID | Status | Action |
 |---|---|---|
 | O1 | **pending** | Provide OpenRouter API key as `OPENROUTER_API_KEY` (Cloud Agent secret and/or local `.env`). Needed only for live LLM runs; the deterministic suite must pass without it. |
-| O2 | pending | Choose OpenRouter model id for `OPENROUTER_MODEL` (e.g. a tool-calling capable model). |
+| O2 | **done** | Default model set to `openai/gpt-4.1-nano` (economical tool-calling model for filing extraction). Override via `OPENROUTER_MODEL` if needed. |
 | O3 | pending | Decide whether a per-run OpenRouter cost ceiling is required. |
