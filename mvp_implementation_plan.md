@@ -2,8 +2,9 @@
 
 **Status:** draft — actionable, but several decisions in [§4 Open questions](#4-open-questions) should be confirmed before Slice 3 (agent extraction) and Slice 4 (historical metrics). Every open question has a proposed default so an agent can proceed unblocked if no answer arrives.
 
-**Document version:** 0.2
+**Document version:** 0.3
 **Settled since 0.1:** revision end-to-end eval demoted (D17) — no synthetic revision fixtures.
+**Settled since 0.2:** LLM provider is OpenRouter (D18); API key pending from owner (see [§7 Owner TODOs](#7-owner-todos)).
 **Scoring version:** `score-v1`
 **Prompt version:** `extract-v1`
 **Agent version:** `agent-v1`
@@ -637,6 +638,7 @@ Defaults an implementing agent should assume unless an open question is answered
 | D15 | Scheduling | `--interval` is an in-process sleep loop; no cron, systemd or external scheduler |
 | D16 | Secrets | LLM key via env var only; never logged, never in spans, `.env.example` documents names without values |
 | D17 | Revision eval coverage | **Settled:** demote. No synthetic revision fixtures. No end-to-end agent path required for explicit/ambiguous revisions. Keep schema + deterministic linker; unit-test no-overwrite and `needs_review` on ambiguous links only. Document as best-effort / often `needs_review` in README limitations. |
+| D18 | LLM provider | **Settled:** OpenRouter. OpenAI-compatible client with `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` defaulting to `https://openrouter.ai/api/v1`, and `OPENROUTER_MODEL` (model id TBD). Provider stays behind the small interface; deterministic suite uses `ScriptedProvider` and never requires the key. |
 
 ---
 
@@ -650,9 +652,15 @@ Defaults an implementing agent should assume unless an open question is answered
 
 #### Q2: LLM provider and model
 
-Which provider, which model identifier, and will an API key be available as a Cloud Agent secret? Also confirm whether a per-run cost ceiling should be enforced.
+**Settled (provider):** OpenRouter (D18). Key will be supplied later by the owner — see [§7 Owner TODOs](#7-owner-todos).
 
-*Proposed default:* provider-agnostic interface; one concrete OpenAI-compatible implementation reading `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL`; no live LLM test in the default suite.
+Still open:
+
+- Which OpenRouter model id (`OPENROUTER_MODEL`)?
+- Should a per-run cost ceiling be enforced?
+- Will the key be provided as a Cloud Agent secret, local `.env`, or both?
+
+*Working assumption until answered:* OpenAI-compatible client against OpenRouter; model id chosen at config time; no live LLM test in the default suite.
 
 #### Q3: Is a real network verification expected?
 
