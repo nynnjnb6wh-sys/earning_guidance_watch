@@ -10,6 +10,7 @@ import typer
 from guidance_watch import __version__
 from guidance_watch.config import get_settings
 from guidance_watch.pipeline.analyze import analyze_accession
+from guidance_watch.pipeline.watch import run_watch_loop, run_watch_once
 
 app = typer.Typer(
     name="guidance-watch",
@@ -36,11 +37,34 @@ def version_cmd() -> None:
 def watch(
     once: bool = typer.Option(False, "--once", help="Poll once and exit."),
     interval: int = typer.Option(900, "--interval", help="Seconds between polls."),
+    no_analyze: bool = typer.Option(
+        False,
+        "--no-analyze",
+        help="Only detect/record new filings; do not download or analyze.",
+    ),
 ) -> None:
     """Poll watchlist companies for new Form 8-K filings."""
-    _ = (once, interval)
-    typer.echo("watch: not implemented yet (Slice 3).", err=True)
-    raise typer.Exit(code=1)
+    settings = get_settings()
+    if once:
+        result = run_watch_once(settings=settings, analyze=not no_analyze)
+        typer.echo(
+            f"polled={result.poll.companies_polled} "
+            f"detected={len(result.poll.detected)} "
+            f"skipped_duplicate={result.poll.skipped_duplicate} "
+            f"analyzed={len(result.analyses)}"
+        )
+        for det in result.poll.detected:
+            typer.echo(f"  detected {det.company.ticker} {det.metadata.accession}")
+        for analysis in result.analyses:
+            typer.echo(f"  analyze {analysis.accession} -> {analysis.status}")
+        raise typer.Exit(code=0)
+
+    typer.echo(f"watching every {interval}s (Ctrl+C to stop)")
+    try:
+        run_watch_loop(interval_s=interval, settings=settings)
+    except KeyboardInterrupt:
+        typer.echo("stopped")
+        raise typer.Exit(code=0) from None
 
 
 @app.command("analyze")
