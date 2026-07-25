@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 
 _HEADING_RE = re.compile(
-    r"(?is)(?:^|\n)\s*(outlook|guidance|financial\s+outlook|business\s+outlook)\s*\n+(.*?)(?=\n\s*[A-Z][A-Za-z ]{2,40}\n|\Z)"
+    r"(?is)(?:^|\n)\s*(outlook|guidance|financial\s+outlook|business\s+outlook)"
+    r"\s*\n+(.*?)(?=\n\s*[A-Z][A-Za-z ]{2,40}\n|\Z)"
 )
 
 
