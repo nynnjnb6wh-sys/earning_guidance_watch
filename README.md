@@ -10,6 +10,13 @@ See [`mvp_implementation_plan.md`](mvp_implementation_plan.md) for scope, formul
 
 Slices 0–2 complete (skeleton, models/scoring, fixture analyze → persisted reports). **No OpenRouter key required** for the default path: ScriptedProvider + deterministic extractor. OpenRouter (default model `openai/gpt-4.1-nano`) is optional for later live agent runs.
 
+Local EDGAR samples (gitignored) can be downloaded without any LLM key:
+
+```bash
+python scripts/download_edgar_sample.py   # → data/edgar_raw/ (untracked)
+guidance-watch analyze --accession 0001045810-26-000051 --fixtures data/edgar_raw
+```
+
 ## Setup
 
 ```bash

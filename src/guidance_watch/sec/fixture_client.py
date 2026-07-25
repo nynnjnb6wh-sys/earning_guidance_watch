@@ -21,13 +21,21 @@ class FixtureSecClient:
 
     def __init__(self, fixtures_root: Path) -> None:
         self.fixtures_root = fixtures_root
-        self.filings_root = fixtures_root / "filings"
+        # Support either tests/fixtures/filings/{accession} or data/edgar_raw/{TICKER}/{accession}
+        nested = fixtures_root / "filings"
+        self.filings_root = nested if nested.is_dir() else fixtures_root
 
     def _accession_dir(self, accession: str) -> Path:
-        path = self.filings_root / accession
-        if not path.is_dir():
-            raise FileNotFoundError(f"No fixture filing for accession {accession}")
-        return path
+        direct = self.filings_root / accession
+        if direct.is_dir():
+            return direct
+        # Nested ticker layout used by data/edgar_raw downloads.
+        if self.filings_root.is_dir():
+            for child in self.filings_root.iterdir():
+                candidate = child / accession
+                if candidate.is_dir():
+                    return candidate
+        raise FileNotFoundError(f"No fixture filing for accession {accession}")
 
     def get_filing_metadata(self, accession: str) -> FilingMetadata:
         raw = json.loads((self._accession_dir(accession) / "metadata.json").read_text())
