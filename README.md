@@ -8,7 +8,7 @@ See [`mvp_implementation_plan.md`](mvp_implementation_plan.md) for scope, formul
 
 ## Status
 
-Slices 0–2 complete (skeleton, models/scoring, fixture analyze → persisted reports). Offline deterministic suite is the acceptance path; OpenRouter credentials are owner-supplied later (plan §7).
+Slices 0–2 complete (skeleton, models/scoring, fixture analyze → persisted reports). **No OpenRouter key required** for the default path: ScriptedProvider + deterministic extractor. OpenRouter (default model `openai/gpt-4.1-nano`) is optional for later live agent runs.
 
 ## Setup
 
@@ -44,7 +44,12 @@ Live checks (network + credentials) are optional and marked `@pytest.mark.live`.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Set a descriptive `SEC_USER_AGENT`. Provide `OPENROUTER_API_KEY` only when running live LLM analysis. Default model is `openai/gpt-4.1-nano` (`OPENROUTER_MODEL`).
+Copy `.env.example` to `.env`. Set a descriptive `SEC_USER_AGENT`.
+
+LLM modes:
+
+- **Default (no key):** scripted / deterministic extraction — sufficient for offline tests, fixtures, and local `analyze`.
+- **Optional live:** set `OPENROUTER_API_KEY`. Default model is `openai/gpt-4.1-nano`. OpenRouter `:free` models still need a key; they are unbilled, not keyless.
 
 ## License
 
