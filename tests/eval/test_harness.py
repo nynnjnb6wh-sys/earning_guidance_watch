@@ -18,6 +18,7 @@ def test_eval_harness_passes_offline(tmp_path: Path) -> None:
         GUIDANCE_WATCH_DB_PATH=tmp_path / "eval.db",
         GUIDANCE_WATCH_CACHE_DIR=tmp_path / "cache",
         GUIDANCE_WATCH_REPORTS_DIR=tmp_path / "reports",
+        OPENROUTER_API_KEY="",
     )
     report = run_eval(fixtures_root=FIXTURES, settings=settings)
     assert report.passed, {r.case_id: r.detail for r in report.results if not r.passed}

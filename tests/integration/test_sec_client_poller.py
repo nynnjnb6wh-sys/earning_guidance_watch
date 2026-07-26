@@ -75,6 +75,7 @@ def settings(tmp_path: Path) -> Settings:
         GUIDANCE_WATCH_REPORTS_DIR=tmp_path / "reports",
         SEC_USER_AGENT="GuidanceWatchTest/0.1 (test@example.com)",
         SEC_REQUESTS_PER_SECOND=1000.0,
+        OPENROUTER_API_KEY="",
     )
 
 

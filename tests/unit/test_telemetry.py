@@ -21,6 +21,7 @@ def settings(tmp_path: Path) -> Settings:
         GUIDANCE_WATCH_DB_PATH=tmp_path / "t.db",
         GUIDANCE_WATCH_CACHE_DIR=tmp_path / "cache",
         GUIDANCE_WATCH_REPORTS_DIR=tmp_path / "reports",
+        OPENROUTER_API_KEY="",
     )
 
 

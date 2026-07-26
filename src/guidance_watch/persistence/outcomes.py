@@ -4,8 +4,28 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from guidance_watch.models import HistoricalOutcome
+
+
+@dataclass
+class SqliteHistorySource:
+    """HistorySource backed by linked ``guidance_outcomes`` rows."""
+
+    conn: sqlite3.Connection
+
+    def get_company_history(self, cik: str, before: datetime) -> list[HistoricalOutcome]:
+        if before.tzinfo is None:
+            cutoff_date = before.replace(tzinfo=UTC).date()
+        else:
+            cutoff_date = before.astimezone(UTC).date()
+        return [
+            outcome
+            for outcome in list_outcomes_for_cik(self.conn, cik)
+            if outcome.actual_publication_date <= cutoff_date
+        ]
 
 
 def upsert_outcome(conn: sqlite3.Connection, outcome: HistoricalOutcome) -> None:

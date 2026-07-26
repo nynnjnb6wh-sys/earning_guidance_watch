@@ -93,7 +93,7 @@ API keys are redacted from span attributes.
 - Revision linking is best-effort; ambiguous links → `needs_review` (no synthetic revision eval fixtures)
 - Actuals come from curated `seed/actuals.csv` in the MVP (XBRL later)
 - Heuristic reliability score is not a probability the current guide is correct
-- Default analyze path uses a deterministic extractor; OpenRouter agent is optional
+- Default analyze path uses a deterministic extractor + agent tools for history/scoring. Set `GUIDANCE_WATCH_USE_LIVE_AGENT=1` (with `OPENROUTER_API_KEY`) to use the live OpenRouter agent for extraction.
 
 ## License
 

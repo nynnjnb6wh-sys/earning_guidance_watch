@@ -33,3 +33,7 @@ class FakeSentimentProvider:
             negative_probability=self.negative,
             analyzed_text_hash=digest,
         )
+
+    def analyze_sentiment(self, text: str) -> SentimentResult:
+        """Alias matching the agent ``SentimentSource`` protocol."""
+        return self.analyze(text)
