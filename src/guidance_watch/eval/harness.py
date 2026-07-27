@@ -299,6 +299,8 @@ def run_eval(
     settings: Settings | None = None,
 ) -> EvalReport:
     settings = settings or get_settings()
+    # Eval suite is offline by design — never activate the live OpenRouter agent.
+    settings = settings.model_copy(update={"openrouter_api_key": None})
     fixtures_root = fixtures_root or (Path("tests/fixtures"))
     conn = init_db(settings.db_path)
     results: list[CaseResult] = []

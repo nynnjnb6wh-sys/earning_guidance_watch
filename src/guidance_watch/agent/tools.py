@@ -111,7 +111,14 @@ class AgentTools:
         return ToolResult(name="analyze_sentiment", ok=True, data=result)
 
     def calculate_assessment(self, payload: AssessmentInput | dict[str, Any]) -> ToolResult:
-        inp = AssessmentInput.model_validate(payload) if isinstance(payload, dict) else payload
+        try:
+            inp = (
+                AssessmentInput.model_validate(payload)
+                if isinstance(payload, dict)
+                else payload
+            )
+        except Exception as exc:  # noqa: BLE001 — tool boundary; return structured error
+            return ToolResult(name="calculate_assessment", ok=False, error=str(exc))
         # Guard current claim accepted_at
         try:
             ensure_not_after_cutoff(

@@ -11,7 +11,7 @@ from guidance_watch import AGENT_VERSION, PROMPT_VERSION
 from guidance_watch.agent.provider import LlmProvider
 from guidance_watch.agent.tools import TOOL_SCHEMAS, AgentTools, dispatch_tool
 from guidance_watch.models import GuidanceClaim
-from guidance_watch.pipeline.analyze import extract_guidance_from_text, select_exhibit99
+from guidance_watch.pipeline.extract import extract_guidance_from_text, select_exhibit99
 from guidance_watch.sec.html_text import quote_appears_in_source
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "extract-v1.md"
